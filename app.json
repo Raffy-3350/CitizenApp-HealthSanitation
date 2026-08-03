@@ -2,14 +2,18 @@
   "expo": {
     "name": "CitizenApp",
     "slug": "CitizenApp",
-    "version": "1.0.0",
+    "version": "17.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "citizenapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your gallery to attach photos to health reports.",
+        "NSLocationWhenInUseUsageDescription": "Your location is used to pinpoint the incident address."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +23,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
