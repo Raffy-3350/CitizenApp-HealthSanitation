@@ -38,6 +38,10 @@ yarn-error.*
 
 app-example
 
+# IDE / Android Studio
+.idea/
+*.iml
+
 # generated native folders
 /ios
 /android

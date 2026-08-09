@@ -10,12 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.citizenapp.healthsanitation",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your gallery to attach photos to health reports.",
         "NSLocationWhenInUseUsageDescription": "Your location is used to pinpoint the incident address."
       }
     },
     "android": {
+      "package": "com.citizenapp.healthsanitation",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
