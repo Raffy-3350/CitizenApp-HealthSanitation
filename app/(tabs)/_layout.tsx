@@ -1,3 +1,4 @@
+
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useApp } from '../../context/AppContext';
@@ -40,6 +41,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -49,6 +51,7 @@ export default function TabLayout() {
         name="services"
         options={{
           title: 'Services',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="apps-outline" size={size} color={color} />
           ),
@@ -58,6 +61,7 @@ export default function TabLayout() {
         name="records"
         options={{
           title: 'Records',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="folder-outline" size={size} color={color} />
           ),
@@ -67,6 +71,7 @@ export default function TabLayout() {
         name="alerts"
         options={{
           title: 'Alerts',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications-outline" size={size} color={color} />
           ),
@@ -77,6 +82,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),

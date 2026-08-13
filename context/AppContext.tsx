@@ -90,6 +90,25 @@ export interface FamilyMember {
   status: string;
 }
 
+export interface Announcement {
+  id: string;
+  title: string;
+  subtitle: string;
+  content: string;
+  category: 'Health Alert' | 'Community Drive' | 'Sanitation Notice' | 'Public Service';
+  date: string;
+  priority: 'urgent' | 'normal';
+  targetRole: 'citizen' | 'employee' | 'all';
+  icon: string;
+  color: string;
+  badgeText?: string;
+  actionRoute?: string;
+  actionLabel?: string;
+  location?: string;
+}
+
+import { Language, TRANSLATIONS } from '../constants/translations';
+
 interface AppContextType {
   appointments: Appointment[];
   permits: Permit[];
@@ -97,11 +116,19 @@ interface AppContextType {
   reports: HealthReport[];
   vaccines: Vaccine[];
   alerts: AlertItem[];
+  announcements: Announcement[];
   userProfile: UserProfile;
   familyMembers: FamilyMember[];
   themeMode: 'light' | 'dark' | 'system';
+  language: Language;
+  isOffline: boolean;
+  offlineSyncQueueCount: number;
 
-  // Actions
+  // Actions & Translation
+  setLanguage: (lang: Language) => void;
+  toggleOfflineMode: () => void;
+  syncOfflineQueueWithSupabase: () => void;
+  t: (key: keyof typeof TRANSLATIONS) => string;
   addAppointment: (appt: Omit<Appointment, 'id' | 'status' | 'statusType'>) => void;
   addPermit: (permit: Omit<Permit, 'id' | 'status' | 'statusType' | 'date' | 'fee'>) => void;
   addService: (service: Omit<WastewaterService, 'id' | 'status' | 'statusType' | 'cost'>) => void;
@@ -233,6 +260,57 @@ const initialAlerts: AlertItem[] = [
   { id: 5, type: 'Vaccine Reminder', title: 'Sofia’s MMR Booster Due Soon', message: 'MMR booster due on July 28, 2026 at Health Center 1.', time: '3 days ago', icon: 'medkit', color: '#9b59b6', read: true },
 ];
 
+const initialAnnouncements: Announcement[] = [
+  {
+    id: 'ANN-101',
+    title: 'Free Anti-Rabies & Flu Shot Community Drive',
+    subtitle: 'Brgy. 7 Main Health Center',
+    category: 'Community Drive',
+    date: 'Aug 15 - 17, 2026',
+    content: 'The City Health Office is conducting a 3-day free vaccination drive. Anti-rabies shots for pets and Quadrivalent Flu vaccines for senior citizens and kids below 5 are available free of charge.',
+    priority: 'urgent',
+    targetRole: 'citizen',
+    icon: 'medkit',
+    color: '#10B981',
+    badgeText: 'Free Service',
+    actionRoute: '/(tabs)/view-vaccines',
+    actionLabel: 'Check Vaccine Portal',
+    location: 'Brgy. 7 Health Center Quadrangle',
+  },
+  {
+    id: 'ANN-102',
+    title: 'Barangay Misting & Dengue Prevention Campaign',
+    subtitle: 'District-wide Sanitation Operation',
+    category: 'Health Alert',
+    date: 'Aug 12, 2026 | 6:00 AM',
+    content: 'City Sanitation officers will perform chemical misting and canal declogging in Brgy. 7 & 8. Residents are advised to cover open food containers and store drinking water safely.',
+    priority: 'urgent',
+    targetRole: 'citizen',
+    icon: 'shield-checkmark',
+    color: '#EF4444',
+    badgeText: 'Urgent Advisory',
+    actionRoute: '/(tabs)/report-issue',
+    actionLabel: 'Report Breeding Site',
+    location: 'Barangay 7 & 8 Residential Zones',
+  },
+  {
+    id: 'ANN-103',
+    title: 'Subsidized Septic Tank Desludging Program',
+    subtitle: 'Wastewater Management Unit',
+    category: 'Public Service',
+    date: 'August 2026 Slots Open',
+    content: 'Registered homeowners in Brgy. 7 can request priority septic tank cleaning at a 50% subsidized rate for the month of August. Slots are limited.',
+    priority: 'normal',
+    targetRole: 'citizen',
+    icon: 'water',
+    color: '#0284C7',
+    badgeText: '50% Subsidy',
+    actionRoute: '/(tabs)/request-service',
+    actionLabel: 'Book Desludging',
+    location: 'City-wide Residential District',
+  },
+];
+
 const initialUserProfile: UserProfile = {
   name: 'Pedro García',
   email: 'pedro.garcia@email.com',
@@ -257,9 +335,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [reports, setReports] = useState<HealthReport[]>(initialReports);
   const [vaccines, setVaccines] = useState<Vaccine[]>(initialVaccines);
   const [alerts, setAlerts] = useState<AlertItem[]>(initialAlerts);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
   const [userProfile, setUserProfile] = useState<UserProfile>(initialUserProfile);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialFamilyMembers);
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
+  const [language, setLanguage] = useState<Language>('en');
+
+  // Offline Mode & Outbox Sync Queue State
+  const [isOffline, setIsOffline] = useState<boolean>(false);
+  const [offlineSyncQueue, setOfflineSyncQueue] = useState<any[]>([]);
+
+  const toggleOfflineMode = () => {
+    setIsOffline((prev) => !prev);
+  };
+
+  const syncOfflineQueueWithSupabase = () => {
+    if (offlineSyncQueue.length === 0) return;
+    setOfflineSyncQueue([]);
+    const syncAlert: AlertItem = {
+      id: Date.now(),
+      type: 'Supabase Sync',
+      title: 'Cloud Auto-Sync Complete',
+      message: 'Successfully synchronized offline reports to Caloocan Supabase Database.',
+      time: 'Just now',
+      icon: 'cloud-done',
+      color: '#10B981',
+      read: false,
+    };
+    setAlerts((prev) => [syncAlert, ...prev]);
+  };
+
+  const t = (key: keyof typeof TRANSLATIONS): string => {
+    const translationItem = TRANSLATIONS[key];
+    if (!translationItem) return key;
+    return translationItem[language] || translationItem['en'] || key;
+  };
 
   const addAppointment = (appt: Omit<Appointment, 'id' | 'status' | 'statusType'>) => {
     const newAppt: Appointment = {
@@ -364,23 +474,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleVaccineStatus = (id: string) => {
     setVaccines(
-      vaccines.map((v) =>
-        v.id === id
-          ? {
-              ...v,
-              status: v.status === 'Completed' ? 'Due' : 'Completed',
-              date: v.status === 'Completed' ? 'Pending Schedule' : 'Today',
-              color: v.status === 'Completed' ? '#f39c12' : '#2ecc71',
-            }
-          : v
-      )
+      vaccines.map((v) => {
+        if (v.id === id) {
+          const isCompleted = v.status === 'Completed';
+          return {
+            ...v,
+            status: isCompleted ? 'Due' : 'Completed',
+            color: isCompleted ? '#f39c12' : '#2ecc71',
+            date: isCompleted ? 'Pending Schedule' : 'Today',
+            certId: isCompleted ? undefined : `CERT-VAL-${Math.floor(1000 + Math.random() * 9000)}`,
+          };
+        }
+        return v;
+      })
     );
   };
 
   const addFamilyMember = (member: Omit<FamilyMember, 'id'>) => {
     const newMember: FamilyMember = {
       ...member,
-      id: `FAM-${Date.now()}`,
+      id: `FAM-${familyMembers.length + 1}`,
     };
     setFamilyMembers([...familyMembers, newMember]);
   };
@@ -398,9 +511,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reports,
         vaccines,
         alerts,
+        announcements,
         userProfile,
         familyMembers,
         themeMode,
+        language,
+        isOffline,
+        offlineSyncQueueCount: offlineSyncQueue.length,
+        toggleOfflineMode,
+        syncOfflineQueueWithSupabase,
+        setLanguage,
+        t,
         addAppointment,
         addPermit,
         addService,

@@ -1,6 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useRef, useState } from 'react';
 import {
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -8,24 +12,47 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInRight } from 'react-native-reanimated';
+import { AnnouncementModal } from '../../components/ui/AnnouncementModal';
 import { QuickAction } from '../../components/ui/QuickAction';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
-import { useApp } from '../../context/AppContext';
+import { Announcement, useApp } from '../../context/AppContext';
 import { useColors } from '../../hooks/useColors';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = Math.min(SCREEN_WIDTH - 56, 320);
+const CARD_GAP = 12;
+const CARD_INTERVAL = CARD_WIDTH + CARD_GAP;
 
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { userProfile, appointments, permits, services, reports, alerts } = useApp();
+  const { userProfile, appointments, permits, services, reports, alerts, announcements, t } = useApp();
+
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
+  const announcementScrollRef = useRef<ScrollView>(null);
+
+  const citizenAnnouncements = announcements.filter(
+    (a) => a.targetRole === 'citizen' || a.targetRole === 'all'
+  );
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / CARD_INTERVAL);
+    if (index >= 0 && index < citizenAnnouncements.length && index !== activeAnnouncementIndex) {
+      setActiveAnnouncementIndex(index);
+    }
+  };
 
   const quickActions = [
-    { icon: 'calendar-outline' as const, label: 'Book Appt', route: '/(tabs)/book-appointment' },
-    { icon: 'document-text-outline' as const, label: 'Apply Permit', route: '/(tabs)/apply-permit' },
-    { icon: 'medkit-outline' as const, label: 'View Vaccines', route: '/(tabs)/view-vaccines' },
-    { icon: 'water-outline' as const, label: 'Request Service', route: '/(tabs)/request-service' },
-    { icon: 'search-outline' as const, label: 'Track Requests', route: '/(tabs)/track-requests' },
-    { icon: 'warning-outline' as const, label: 'Report Issue', route: '/(tabs)/report-issue' },
+    { icon: 'calendar-outline' as const, label: t('bookAppt'), route: '/(tabs)/book-appointment' },
+    { icon: 'document-text-outline' as const, label: t('applyPermit'), route: '/(tabs)/apply-permit' },
+    { icon: 'medkit-outline' as const, label: t('viewVaccines'), route: '/(tabs)/view-vaccines' },
+    { icon: 'water-outline' as const, label: t('requestService'), route: '/(tabs)/request-service' },
+    { icon: 'search-outline' as const, label: t('trackRequests'), route: '/(tabs)/track-requests' },
+    { icon: 'warning-outline' as const, label: t('reportIssue'), route: '/(tabs)/report-issue' },
   ];
 
   const unreadAlerts = alerts.filter((a) => !a.read);
@@ -35,14 +62,23 @@ export default function HomeScreen() {
     services.filter((s) => s.statusType === 'pending').length +
     reports.filter((r) => r.statusType === 'pending').length;
 
+  const handleOpenAnnouncement = (item: Announcement) => {
+    setSelectedAnnouncement(item);
+    setModalVisible(true);
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.greeting, { color: colors.text }]}>Good Day, {userProfile.name.split(' ')[0]}! 👋</Text>
-            <Text style={[styles.subGreeting, { color: colors.subtext }]}>Health & Sanitation Portal</Text>
+            <View style={styles.roleBadge}>
+              <Ionicons name="person-circle-outline" size={14} color="#0284C7" />
+              <Text style={styles.roleBadgeText}>{t('citizenPortal')}</Text>
+            </View>
+            <Text style={[styles.greeting, { color: colors.text }]}>{t('goodDay')}, {userProfile.name.split(' ')[0]}! 👋</Text>
+            <Text style={[styles.subGreeting, { color: colors.subtext }]}>{t('healthSanitationOffice')}</Text>
           </View>
           <TouchableOpacity style={styles.notifButton} onPress={() => router.push('/(tabs)/alerts' as any)}>
             <Ionicons name="notifications-outline" size={24} color={colors.text} />
@@ -50,13 +86,110 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Public Announcements Carousel */}
+        <View style={styles.announcementSection}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={styles.announcementTitleRow}>
+              <Ionicons name="megaphone-outline" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('publicAnnouncements')}</Text>
+            </View>
+          </View>
+
+          <ScrollView
+            ref={announcementScrollRef}
+            horizontal
+            pagingEnabled={false}
+            snapToInterval={CARD_INTERVAL}
+            decelerationRate="fast"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.announcementCarousel}
+          >
+            {citizenAnnouncements.map((item, index) => (
+              <Animated.View key={item.id} entering={FadeInRight.delay(index * 100).springify()}>
+                <TouchableOpacity
+                  style={[
+                    styles.announcementCard,
+                    {
+                      width: CARD_WIDTH,
+                      backgroundColor: colors.card,
+                      borderColor: index === activeAnnouncementIndex ? colors.primary : colors.border,
+                      borderWidth: index === activeAnnouncementIndex ? 1.5 : 1,
+                    },
+                  ]}
+                  activeOpacity={0.88}
+                  onPress={() => handleOpenAnnouncement(item)}
+                >
+                  <View style={styles.announcementTopRow}>
+                    <View style={[styles.categoryTag, { backgroundColor: item.color + '18' }]}>
+                      <Text style={[styles.categoryTagText, { color: item.color }]}>
+                        {item.badgeText || item.category}
+                      </Text>
+                    </View>
+                    {item.priority === 'urgent' && (
+                      <View style={styles.urgentBadge}>
+                        <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                        <Text style={styles.urgentBadgeText}>Urgent</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <Text style={[styles.announcementTitle, { color: colors.text }]} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.announcementDate, { color: colors.subtext }]}>
+                    📅 {item.date}
+                  </Text>
+
+                  <Text style={[styles.announcementPreview, { color: colors.subtext }]} numberOfLines={2}>
+                    {item.content}
+                  </Text>
+
+                  <View style={styles.announcementFooter}>
+                    <Text style={[styles.readMoreText, { color: colors.primary }]}>
+                      {t('readFullAdvisory')}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
+          </ScrollView>
+
+          {/* Dot Pagination Indicators */}
+          <View style={styles.dotsContainer}>
+            {citizenAnnouncements.map((_, idx) => (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => {
+                  setActiveAnnouncementIndex(idx);
+                  announcementScrollRef.current?.scrollTo({
+                    x: idx * CARD_INTERVAL,
+                    animated: true,
+                  });
+                }}
+              >
+                <View
+                  style={[
+                    styles.dot,
+                    idx === activeAnnouncementIndex
+                      ? [styles.activeDot, { backgroundColor: colors.primary }]
+                      : { backgroundColor: colors.border },
+                  ]}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Quick Stats */}
         <View style={styles.statsRow}>
           {[
-            { count: appointments.length, label: 'Appts' },
-            { count: permits.length, label: 'Permits' },
-            { count: services.length, label: 'Services' },
-            { count: pendingCount, label: 'Pending' },
+            { count: appointments.length, label: t('appts') },
+            { count: permits.length, label: t('permits') },
+            { count: services.length, label: t('services') },
+            { count: pendingCount, label: t('pending') },
           ].map((stat, idx) => (
             <TouchableOpacity
               key={idx}
@@ -69,36 +202,9 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Active Alerts */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Active Alerts</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/alerts' as any)}>
-              <Text style={[styles.viewAllText, { color: colors.primary }]}>View All ({alerts.length})</Text>
-            </TouchableOpacity>
-          </View>
-          {alerts.slice(0, 3).map((alert, index) => (
-            <Animated.View key={alert.id} entering={FadeInDown.delay(index * 80).springify()}>
-              <TouchableOpacity
-                style={[styles.alertCard, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
-                onPress={() => router.push('/(tabs)/alerts' as any)}
-              >
-                <View style={[styles.alertIcon, { backgroundColor: alert.color + '20' }]}>
-                  <Ionicons name={alert.icon as any} size={20} color={alert.color} />
-                </View>
-                <View style={styles.alertContent}>
-                  <Text style={[styles.alertType, { color: colors.text }]}>{alert.type}</Text>
-                  <Text style={[styles.alertMessage, { color: colors.subtext }]} numberOfLines={1}>{alert.message}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
-              </TouchableOpacity>
-            </Animated.View>
-          ))}
-        </View>
-
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('quickActions')}</Text>
           <View style={styles.quickActionsGrid}>
             {quickActions.map((action, index) => (
               <QuickAction
@@ -113,6 +219,18 @@ export default function HomeScreen() {
 
         <View style={{ height: 30 }} />
       </ScrollView>
+
+      {/* Announcement Full Detail Modal */}
+      <AnnouncementModal
+        visible={modalVisible}
+        announcement={selectedAnnouncement}
+        onClose={() => setModalVisible(false)}
+        onActionPress={(route) => {
+          if (route) {
+            router.push(route as any);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -232,6 +350,135 @@ const styles = StyleSheet.create({
     ...Typography.small,
     color: '#86B6F6',
     marginTop: 1,
+  },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#0284C715',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  roleBadgeText: {
+    ...Typography.caption,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0284C7',
+    letterSpacing: 0.5,
+  },
+  announcementSection: {
+    marginTop: Spacing.md,
+  },
+  announcementTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  advisoryCount: {
+    ...Typography.caption,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  announcementCarousel: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.xs,
+    gap: Spacing.md,
+  },
+  announcementCard: {
+    width: 280,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    shadowColor: '#176B87',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  announcementTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  categoryTag: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  categoryTagText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    fontSize: 11,
+  },
+  urgentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EF444415',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  urgentBadgeText: {
+    ...Typography.caption,
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  announcementTitle: {
+    ...Typography.subheading,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  announcementDate: {
+    ...Typography.caption,
+    fontSize: 12,
+    marginBottom: Spacing.xs,
+  },
+  announcementPreview: {
+    ...Typography.small,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: Spacing.sm,
+  },
+  announcementFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#EEF5FF',
+    paddingTop: Spacing.xs,
+  },
+  readMoreText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  swipeHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: Spacing.xs,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  activeDot: {
+    width: 18,
+    height: 6,
+    borderRadius: 3,
   },
   quickActionsGrid: {
     flexDirection: 'row',

@@ -18,15 +18,31 @@ import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { useApp } from '../../context/AppContext';
 import { useColors } from '../../hooks/useColors';
 
+import { LANGUAGE_OPTIONS, Language } from '../../constants/translations';
+
 export default function ProfileScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { userProfile, familyMembers, updateUserProfile, addFamilyMember, vaccines, appointments, permits, themeMode, setThemeMode } = useApp();
+  const {
+    userProfile,
+    familyMembers,
+    updateUserProfile,
+    addFamilyMember,
+    vaccines,
+    appointments,
+    permits,
+    themeMode,
+    setThemeMode,
+    language,
+    setLanguage,
+    t,
+  } = useApp();
 
   // Active Modal State
   const [activeModal, setActiveModal] = useState<
-    'personal' | 'family' | 'settings' | 'language' | 'support' | null
+    'personal' | 'family' | 'settings' | 'language' | 'support' | 'docs' | null
   >(null);
+  const [activeDocChapter, setActiveDocChapter] = useState<number>(1);
 
   // Editable Form State
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
@@ -44,7 +60,7 @@ export default function ProfileScreen() {
     biometrics: false,
   });
 
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const activeLangOption = LANGUAGE_OPTIONS.find((opt) => opt.code === language) || LANGUAGE_OPTIONS[0];
 
   const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
     setThemeMode(mode);
@@ -64,8 +80,8 @@ export default function ProfileScreen() {
     { icon: 'people-outline', label: 'Family Members', sub: 'Household Dependents & Cards', action: () => setActiveModal('family') },
     { icon: 'folder-outline', label: 'Health Records', sub: 'Immunizations & Appointments', action: () => router.push('/(tabs)/records' as any) },
     { icon: 'settings-outline', label: 'App Settings & Theme', sub: `Mode: ${themeMode.toUpperCase()}`, action: () => setActiveModal('settings') },
-    { icon: 'language-outline', label: 'Language Preference', sub: selectedLanguage, action: () => setActiveModal('language') },
-    { icon: 'help-circle-outline', label: 'Help & Emergency Support', sub: 'Hotlines & FAQs', action: () => setActiveModal('support') },
+    { icon: 'language-outline', label: 'Language Preference', sub: `${activeLangOption.flag} ${activeLangOption.label}`, action: () => setActiveModal('language') },
+    { icon: 'help-circle-outline', label: 'Help & Emergency Support', sub: 'Hotlines & App User Manual', action: () => setActiveModal('support') },
   ];
 
   const handleLogout = () => {
@@ -171,7 +187,7 @@ export default function ProfileScreen() {
           <Text style={[styles.logoutText, { color: colors.error }]}>Log Out Session</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.version, { color: colors.subtext }]}>Health & Sanitation CitizenApp v17.0.0 • Active</Text>
+        <Text style={[styles.version, { color: colors.subtext }]}>Health & Sanitation CiventralApp v1.0.0 Active</Text>
         <View style={{ height: 30 }} />
       </ScrollView>
 
@@ -414,82 +430,300 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select App Language</Text>
+              <Text style={styles.modalTitle}>{t('selectLanguage')}</Text>
               <TouchableOpacity onPress={() => setActiveModal(null)}>
                 <Ionicons name="close" size={24} color="#0d4f64" />
               </TouchableOpacity>
             </View>
 
-            {['English', 'Filipino (Tagalog)', 'Cebuano (Bisaya)', 'Ilocano'].map((lang, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[styles.langOption, selectedLanguage === lang && styles.langSelected]}
-                onPress={() => {
-                  setSelectedLanguage(lang);
-                  Alert.alert('Language Updated', `App language set to ${lang}`);
-                  setActiveModal(null);
-                }}
-              >
-                <Text style={[styles.langText, selectedLanguage === lang && styles.langSelectedText]}>
-                  {lang}
-                </Text>
-                {selectedLanguage === lang && (
-                  <Ionicons name="checkmark-circle" size={20} color="#176B87" />
-                )}
-              </TouchableOpacity>
-            ))}
+            {LANGUAGE_OPTIONS.map((opt) => {
+              const isSelected = language === opt.code;
+              return (
+                <TouchableOpacity
+                  key={opt.code}
+                  style={[styles.langOption, isSelected && styles.langSelected]}
+                  onPress={() => {
+                    setLanguage(opt.code);
+                    Alert.alert(t('languageUpdated'), `Language set to ${opt.label} (${opt.nativeName})`);
+                    setActiveModal(null);
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={{ fontSize: 20 }}>{opt.flag}</Text>
+                    <View>
+                      <Text style={[styles.langText, isSelected && styles.langSelectedText]}>
+                        {opt.label}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: colors.subtext }}>
+                        {opt.nativeName}
+                      </Text>
+                    </View>
+                  </View>
+                  {isSelected && (
+                    <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </Modal>
 
-      {/* ─── MODAL 5: Emergency & Help Support ─────────────────────────────── */}
+      {/* ─── MODAL 5: Help Center & App Documentation ─────────────────────────────── */}
       <Modal visible={activeModal === 'support'} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { maxHeight: '88%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Emergency & Health Support</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="help-circle" size={24} color={colors.primary} />
+                <View>
+                  <Text style={styles.modalTitle}>Help Center & App Guide</Text>
+                  <Text style={{ ...Typography.caption, color: colors.subtext }}>Official Caloocan Citizen Documentation</Text>
+                </View>
+              </View>
               <TouchableOpacity onPress={() => setActiveModal(null)}>
-                <Ionicons name="close" size={24} color="#0d4f64" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sectionHeading}>Emergency Direct Hotlines</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: Spacing.sm }}>
+              {/* Section 1: User Manual Documentation Entry Card */}
+              <Text style={styles.sectionHeading}>📖 App User Guide & Documentation</Text>
 
-            <TouchableOpacity
-              style={styles.hotlineCard}
-              onPress={() => Alert.alert('Calling Hotline', 'Dialing Emergency 911...')}
-            >
-              <Ionicons name="call" size={24} color="#e74c3c" />
-              <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                <Text style={styles.hotlineTitle}>National Medical Emergency</Text>
-                <Text style={styles.hotlineNum}>Dial: 911</Text>
-              </View>
+              <TouchableOpacity
+                style={[styles.manualEntryCard, { backgroundColor: colors.card, borderColor: colors.primary }]}
+                onPress={() => setActiveModal('docs')}
+              >
+                <View style={[styles.manualEntryIconBox, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="book" size={22} color="#ffffff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.manualEntryTitle, { color: colors.text }]}>App Manual & User Documentation</Text>
+                  <Text style={[styles.manualEntrySub, { color: colors.subtext }]}>
+                    Tap to open full interactive 6-chapter guide for maps, reporting, permits & offline sync
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+              </TouchableOpacity>
+
+              {/* Section 2: Caloocan Emergency Hotlines */}
+              <Text style={[styles.sectionHeading, { marginTop: Spacing.md }]}>📞 Caloocan Direct Hotlines</Text>
+
+              <TouchableOpacity
+                style={styles.hotlineCard}
+                onPress={() => Alert.alert('Calling Caloocan Emergency Desk', 'Dialing 911...')}
+              >
+                <Ionicons name="call" size={24} color="#e74c3c" />
+                <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                  <Text style={styles.hotlineTitle}>Caloocan Disaster Emergency (CDEO)</Text>
+                  <Text style={styles.hotlineNum}>Dial: 911 / (02) 8888-2256</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.hotlineCard}
+                onPress={() => Alert.alert('Calling Caloocan Health Office', 'Dialing (02) 8555-1234...')}
+              >
+                <Ionicons name="medkit" size={24} color="#176B87" />
+                <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                  <Text style={styles.hotlineTitle}>Caloocan City Health Office (Grace Park)</Text>
+                  <Text style={styles.hotlineNum}>(02) 8555-1234</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.hotlineCard}
+                onPress={() => Alert.alert('Calling Sanitation Desk', 'Dialing (02) 8777-9876...')}
+              >
+                <Ionicons name="water" size={24} color="#9b59b6" />
+                <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                  <Text style={styles.hotlineTitle}>Caloocan Sanitation & Wastewater Desk</Text>
+                  <Text style={styles.hotlineNum}>(02) 8777-9876</Text>
+                </View>
+              </TouchableOpacity>
+
+              <View style={{ height: 16 }} />
+            </ScrollView>
+
+
+            <TouchableOpacity style={[styles.primaryModalBtn, { backgroundColor: colors.subtext }]} onPress={() => setActiveModal(null)}>
+              <Text style={styles.primaryModalBtnText}>CLOSE HELP CENTER</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
-            <TouchableOpacity
-              style={styles.hotlineCard}
-              onPress={() => Alert.alert('Calling Health Center', 'Dialing (02) 8555-1234...')}
-            >
-              <Ionicons name="medkit" size={24} color="#176B87" />
-              <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                <Text style={styles.hotlineTitle}>Brgy. 7 City Health Officer</Text>
-                <Text style={styles.hotlineNum}>(02) 8555-1234</Text>
+      {/* ─── MODAL 6: Interactive Full App User Manual & Documentation Reader ─── */}
+      <Modal visible={activeModal === 'docs'} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '92%', height: '92%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="book" size={24} color={colors.primary} />
+                <View>
+                  <Text style={styles.modalTitle}>App User Manual & Docs</Text>
+                  <Text style={{ ...Typography.caption, color: colors.subtext }}>Caloocan Citizen System Guide</Text>
+                </View>
               </View>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={() => setActiveModal(null)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={styles.hotlineCard}
-              onPress={() => Alert.alert('Calling Sanitation Office', 'Dialing (02) 8777-9876...')}
-            >
-              <Ionicons name="water" size={24} color="#9b59b6" />
-              <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                <Text style={styles.hotlineTitle}>Sanitation & Wastewater Desk</Text>
-                <Text style={styles.hotlineNum}>(02) 8777-9876</Text>
-              </View>
-            </TouchableOpacity>
+            {/* Chapter Horizontal Selector ScrollBar */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: Spacing.xs, maxHeight: 42 }}>
+              {[
+                { id: 1, title: '1. Map Radars', icon: 'map' },
+                { id: 2, title: '2. Incident Reports', icon: 'warning' },
+                { id: 3, title: '3. Wastewater Services', icon: 'water' },
+                { id: 4, title: '4. Health Permits', icon: 'document-text' },
+                { id: 5, title: '5. Vaccine Portal', icon: 'medkit' },
+                { id: 6, title: '6. Offline & Sync', icon: 'cloud-offline' },
+              ].map((chap) => {
+                const isSelected = activeDocChapter === chap.id;
+                return (
+                  <TouchableOpacity
+                    key={chap.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
+                      backgroundColor: isSelected ? colors.primary : colors.card,
+                      borderWidth: 1,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      marginRight: 8,
+                    }}
+                    onPress={() => setActiveDocChapter(chap.id)}
+                  >
+                    <Ionicons name={chap.icon as any} size={14} color={isSelected ? '#ffffff' : colors.text} />
+                    <Text style={{ ...Typography.caption, fontWeight: '700', color: isSelected ? '#ffffff' : colors.text }}>
+                      {chap.title}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
-            <TouchableOpacity style={styles.primaryModalBtn} onPress={() => setActiveModal(null)}>
-              <Text style={styles.primaryModalBtnText}>CLOSE SUPPORT</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, marginVertical: Spacing.xs }}>
+              {activeDocChapter === 1 && (
+                <View>
+                  <Text style={styles.sectionHeading}>🗺️ Chapter 1: Health Cases Map & Spatial Radars</Text>
+                  <Text style={[styles.guideCardBody, { color: colors.text, marginBottom: 8 }]}>
+                    The <Text style={{ fontWeight: '700' }}>Health Cases Alerts</Text> tab features an interactive spatial surveillance map locked to Caloocan City.
+                  </Text>
+                  <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.guideCardTitle, { color: colors.primary }]}>Target Disease Radar Circles</Text>
+                    <Text style={[styles.guideCardBody, { color: colors.subtext }]}>
+                      • <Text style={{ color: '#EF4444', fontWeight: '700' }}>Red Circle (Dengue)</Text>: Outbreak warning heat zone in Barangay 12 Grace Park (14 listed cases).{'\n'}
+                      • <Text style={{ color: '#F97316', fontWeight: '700' }}>Orange Circle (Leptospirosis)</Text>: Floodwater contamination risk in Barangay 8 (6 listed cases).{'\n'}
+                      • <Text style={{ color: '#EAB308', fontWeight: '700' }}>Yellow Circle (Rabies)</Text>: Stray animal bite risk center in Barangay 20 (4 listed cases).{'\n'}
+                      • <Text style={{ color: '#A855F7', fontWeight: '700' }}>Purple Circle (Malaria)</Text>: Vector mosquito control station in Barangay 5 (2 listed cases).
+                    </Text>
+                  </View>
+
+                  <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.guideCardTitle, { color: colors.primary }]}>📍 Location Dot & Proximity Analysis</Text>
+                    <Text style={[styles.guideCardBody, { color: colors.subtext }]}>
+                      Tap the <Text style={{ fontWeight: '700' }}>Snipe Target / Location Dot 📍</Text> button in the bottom right. The map smoothly zooms to your home barangay (Barangay 12, Grace Park) and displays a 2.5-second proximity alert box showing your exact distance to hazard zones.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {activeDocChapter === 2 && (
+                <View>
+                  <Text style={styles.sectionHeading}>🚨 Chapter 2: Incident Reporting & Complaints</Text>
+                  <Text style={[styles.guideCardBody, { color: colors.text, marginBottom: 8 }]}>
+                    Citizens can file official environmental complaints directly to the Caloocan City Health Office.
+                  </Text>
+                  <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.guideCardTitle, { color: colors.primary }]}>Filing a Report Step-by-Step</Text>
+                    <Text style={[styles.guideCardBody, { color: colors.subtext }]}>
+                      1. Open <Text style={{ fontWeight: '700' }}>Services → Report Issue</Text>.{'\n'}
+                      2. Choose issue category (Stagnant Water / Mosquito Site, Waste Accumulation, Unsanitary Sewer).{'\n'}
+                      3. Select urgency level (Normal, Urgent, Emergency).{'\n'}
+                      4. Attach photo evidence and enter street location details.{'\n'}
+                      5. Submit report to generate a tracking ticket (e.g. <Text style={{ fontWeight: '700' }}>CS-001</Text>).
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {activeDocChapter === 3 && (
+                <View>
+                  <Text style={styles.sectionHeading}>💧 Chapter 3: Wastewater & Septic Tank Services</Text>
+                  <Text style={[styles.guideCardBody, { color: colors.text, marginBottom: 8 }]}>
+                    Homeowners and business owners in Caloocan can request municipal wastewater management services.
+                  </Text>
+                  <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.guideCardTitle, { color: colors.primary }]}>Available Wastewater Operations</Text>
+                    <Text style={[styles.guideCardBody, { color: colors.subtext }]}>
+                      • <Text style={{ fontWeight: '700' }}>Septic Tank Desludging</Text>: 50% subsidized residential cleaning for Caloocan homeowners.{'\n'}
+                      • <Text style={{ fontWeight: '700' }}>Grease Trap Cleaning</Text>: Commercial food establishment grease trap maintenance.{'\n'}
+                      • Track fleet truck assignment & scheduled pickup time in <Text style={{ fontWeight: '700' }}>Records</Text>.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {activeDocChapter === 4 && (
+                <View>
+                  <Text style={styles.sectionHeading}>📑 Chapter 4: Business Sanitation Permits</Text>
+                  <Text style={[styles.guideCardBody, { color: colors.text, marginBottom: 8 }]}>
+                    Food eateries, water refilling stations, and commercial shops must maintain active sanitary permits.
+                  </Text>
+                  <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.guideCardTitle, { color: colors.primary }]}>Sanitation Clearance Workflow</Text>
+                    <Text style={[styles.guideCardBody, { color: colors.subtext }]}>
+                      1. Apply online under <Text style={{ fontWeight: '700' }}>Services → Sanitation Permits</Text>.{'\n'}
+                      2. Upload business permit & water bacteriological test certificates.{'\n'}
+                      3. Pay inspection fee via GCash or Municipal Treasury counter.{'\n'}
+                      4. Download official digital Sanitation Permit PDF ticket (e.g. <Text style={{ fontWeight: '700' }}>SP-1042</Text>).
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {activeDocChapter === 5 && (
+                <View>
+                  <Text style={styles.sectionHeading}>💉 Chapter 5: Immunization & Family Portal</Text>
+                  <Text style={[styles.guideCardBody, { color: colors.text, marginBottom: 8 }]}>
+                    Manage immunizations for yourself and family dependents.
+                  </Text>
+                  <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.guideCardTitle, { color: colors.primary }]}>Digital Vaccine Passports</Text>
+                    <Text style={[styles.guideCardBody, { color: colors.subtext }]}>
+                      • View Covid-19, Quadrivalent Flu, and MMR immunization logs.{'\n'}
+                      • Add family dependents (spouses, children) under <Text style={{ fontWeight: '700' }}>Profile → Family Members</Text>.{'\n'}
+                      • Generate & print official digital vaccine QR certificates.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {activeDocChapter === 6 && (
+                <View>
+                  <Text style={styles.sectionHeading}>📡 Chapter 6: Offline Mode & Supabase Sync</Text>
+                  <Text style={[styles.guideCardBody, { color: colors.text, marginBottom: 8 }]}>
+                    Built for typhoon signal resilience in Caloocan City.
+                  </Text>
+                  <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.guideCardTitle, { color: colors.primary }]}>Offline Outbox Operations</Text>
+                    <Text style={[styles.guideCardBody, { color: colors.subtext }]}>
+                      • When cell data is lost, all filed reports and booked appointments are saved to local device cache.{'\n'}
+                      • Top status bar displays <Text style={{ color: '#FDBA74', fontWeight: '700' }}>OFFLINE MODE</Text> with pending queue counter.{'\n'}
+                      • Upon internet reconnection, outbox queue automatically pushes to Supabase cloud tables.
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+
+            <TouchableOpacity style={[styles.primaryModalBtn, { backgroundColor: colors.primary }]} onPress={() => setActiveModal(null)}>
+              <Text style={styles.primaryModalBtnText}>DONE READING</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -820,5 +1054,53 @@ const styles = StyleSheet.create({
     color: '#176B87',
     fontWeight: '600',
     marginTop: 1,
+  },
+  guideCard: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.sm,
+  },
+  guideCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  guideCardTitle: {
+    ...Typography.body,
+    fontWeight: '700',
+    fontSize: 13.5,
+  },
+  guideCardBody: {
+    ...Typography.small,
+    lineHeight: 18,
+  },
+  manualEntryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    gap: Spacing.md,
+    marginVertical: Spacing.xs,
+  },
+  manualEntryIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  manualEntryTitle: {
+    ...Typography.body,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  manualEntrySub: {
+    ...Typography.small,
+    fontSize: 11.5,
+    marginTop: 2,
+    lineHeight: 16,
   },
 });
