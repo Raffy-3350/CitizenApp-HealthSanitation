@@ -1,825 +1,688 @@
+import { useTheme } from '@/src/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Modal,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import Animated, {
-  FadeInDown,
-  FadeInLeft,
-  FadeInRight,
-  FadeOutLeft,
-  FadeOutRight,
-  LinearTransition,
-} from 'react-native-reanimated';
-import { StatusBadge } from '../../components/ui/StatusBadge';
-import { BorderRadius, Spacing, Typography } from '../../constants/theme';
-import {
-  Appointment,
-  Permit,
-  WastewaterService,
-  useApp,
-} from '../../context/AppContext';
-import { useColors } from '../../hooks/useColors';
 
-type RecordFilter = 'all' | 'appointments' | 'permits' | 'services' | 'vaccines' | 'reports';
+const FILTERS = [
+  'All Results (15)',
+  'Appointments (2)',
+  'Sanitation Permits (2)',
+  'Wastewater Services (2)',
+  'Immunization Records (7)',
+  'Filed Reports (2)',
+];
+
+type TransactionIcon = keyof typeof Ionicons.glyphMap;
+
+interface Transaction {
+  id: string;
+  category: string;
+  title: string;
+  status: string;
+  statusColor: string;
+  qrId: string;
+  description: string;
+  address: string;
+  fee: string;
+  color: string;
+  icon: TransactionIcon;
+  actionLabel: string;
+  certificateTitle: string;
+  certificateLabel: string;
+  certificateSubject: string;
+  certificateType: string;
+  certificateHint: string;
+  certificateStatusLabel: string;
+  certificateDateLabel: string;
+  certificateDate: string;
+}
+
+const TRANSACTIONS: Transaction[] = [
+  {
+    id: 'TXN-78210',
+    category: 'SANITATION PERMIT',
+    title: 'Barangay Sanitary Permit',
+    status: 'Under Review',
+    statusColor: '#D97706',
+    qrId: 'QR-8031-94',
+    description: 'Application submitted for food stall renewal',
+    address: 'Unit 12, Caloocan Market Stall',
+    fee: '₱1,200.00',
+    color: '#3B82F6',
+    icon: 'document-text-outline',
+    actionLabel: 'View Permit Certificate',
+    certificateTitle: 'Sanitation Permit Certificate',
+    certificateLabel: 'CITY HEALTH OFFICE OFFICIAL PERMIT',
+    certificateSubject: "Pedro's Fresh Eatery",
+    certificateType: 'Food Establishment (Eatery)',
+    certificateHint: 'Present this QR code to City Health Inspection officers for digital verification',
+    certificateStatusLabel: 'Permit Status',
+    certificateDateLabel: 'Issued Date',
+    certificateDate: 'July 15, 2026',
+  },
+  {
+    id: 'TXN-78211',
+    category: 'APPOINTMENT',
+    title: 'Health Consultation',
+    status: 'Verified',
+    statusColor: '#059669',
+    qrId: 'QR-8032-17',
+    description: 'Medical consultation approved by health center',
+    address: 'Barangay 171 Health Center',
+    fee: '₱0.00',
+    color: '#10B981',
+    icon: 'calendar-outline',
+    actionLabel: 'View Appointment Details',
+    certificateTitle: 'Health Appointment Record',
+    certificateLabel: 'CITY HEALTH OFFICE APPOINTMENT',
+    certificateSubject: 'Health Consultation',
+    certificateType: 'Barangay 171 Health Center',
+    certificateHint: 'Present this appointment QR code when checking in at the health center',
+    certificateStatusLabel: 'Appointment Status',
+    certificateDateLabel: 'Location',
+    certificateDate: 'Barangay 171 Health Center',
+  },
+  {
+    id: 'TXN-78212',
+    category: 'WASTEWATER SERVICE',
+    title: 'Sewer Line Inspection',
+    status: 'Verified',
+    statusColor: '#059669',
+    qrId: 'QR-8033-58',
+    description: 'Inspection passed and service scheduled',
+    address: '202 P. Dela Cruz St.',
+    fee: '₱980.00',
+    color: '#8B5CF6',
+    icon: 'water-outline',
+    actionLabel: 'View Service Receipt',
+    certificateTitle: 'Wastewater Service Receipt',
+    certificateLabel: 'CITY SANITATION SERVICE RECORD',
+    certificateSubject: 'Sewer Line Inspection',
+    certificateType: 'Wastewater Service',
+    certificateHint: 'Present this QR code to the sanitation service team for verification',
+    certificateStatusLabel: 'Service Status',
+    certificateDateLabel: 'Service Address',
+    certificateDate: '202 P. Dela Cruz St.',
+  },
+  {
+    id: 'TXN-78213',
+    category: 'IMMUNIZATION RECORD',
+    title: 'Child Vaccination Record',
+    status: 'Expired',
+    statusColor: '#D97706',
+    qrId: 'QR-8034-66',
+    description: 'Vaccination certificate needs renewal',
+    address: 'Caloocan Health Unit 3',
+    fee: '₱0.00',
+    color: '#F59E0B',
+    icon: 'medkit-outline',
+    actionLabel: 'View Immunization Record',
+    certificateTitle: 'Immunization Record',
+    certificateLabel: 'CITY HEALTH OFFICE VACCINE RECORD',
+    certificateSubject: 'Child Vaccination Record',
+    certificateType: 'Caloocan Health Unit 3',
+    certificateHint: 'Present this QR code to the health unit to verify the immunization record',
+    certificateStatusLabel: 'Record Status',
+    certificateDateLabel: 'Health Unit',
+    certificateDate: 'Caloocan Health Unit 3',
+  },
+  {
+    id: 'TXN-78214',
+    category: 'FILED REPORT',
+    title: 'Drainage Complaint Report',
+    status: 'Under Review',
+    statusColor: '#D97706',
+    qrId: 'QR-8035-81',
+    description: 'Submitted to public works and sanitation team',
+    address: 'R. Mapa Avenue, Zone 8',
+    fee: '₱0.00',
+    color: '#EF4444',
+    icon: 'flag-outline',
+    actionLabel: 'View Filed Report',
+    certificateTitle: 'Filed Report Details',
+    certificateLabel: 'CIVENTRAL COMMUNITY REPORT',
+    certificateSubject: 'Drainage Complaint Report',
+    certificateType: 'Public Works and Sanitation Team',
+    certificateHint: 'Present this QR code when following up with the assigned response team',
+    certificateStatusLabel: 'Report Status',
+    certificateDateLabel: 'Report Location',
+    certificateDate: 'R. Mapa Avenue, Zone 8',
+  },
+  {
+    id: 'TXN-78215',
+    category: 'SANITATION PERMIT',
+    title: 'Food Stall Permit',
+    status: 'Verified',
+    statusColor: '#059669',
+    qrId: 'QR-8036-92',
+    description: 'Permit validated and QR certificate issued',
+    address: 'Caloocan Public Market',
+    fee: '₱1,500.00',
+    color: '#2563EB',
+    icon: 'document-text-outline',
+    actionLabel: 'View Permit Certificate',
+    certificateTitle: 'Sanitation Permit Certificate',
+    certificateLabel: 'CITY HEALTH OFFICE OFFICIAL PERMIT',
+    certificateSubject: 'Food Stall Permit',
+    certificateType: 'Caloocan Public Market',
+    certificateHint: 'Present this QR code to City Health Inspection officers for digital verification',
+    certificateStatusLabel: 'Permit Status',
+    certificateDateLabel: 'Issued Date',
+    certificateDate: 'July 20, 2026',
+  },
+];
 
 export default function RecordsScreen() {
-  const router = useRouter();
-  const colors = useColors();
-  const { userProfile, vaccines, appointments, permits, services, reports } = useApp();
+  const { isDarkMode } = useTheme();
+  const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
-  const [activeFilter, setActiveFilter] = useState<RecordFilter>('all');
-  const [hoveredFilter, setHoveredFilter] = useState<RecordFilter | null>(null);
-  const [slideDirection, setSlideDirection] = useState<'forward' | 'backward'>('forward');
-  const [selectedPermit, setSelectedPermit] = useState<Permit | null>(null);
-  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
-  const [selectedService, setSelectedService] = useState<WastewaterService | null>(null);
-
-  const filterScrollViewRef = useRef<ScrollView>(null);
-  const chipLayouts = useRef<{ [key: string]: { x: number; width: number } }>({});
-
-  const filterOptions: { id: RecordFilter; label: string; count: number; icon: string; desc: string }[] = [
-    { id: 'all', label: 'All Results', count: appointments.length + permits.length + services.length + vaccines.length + reports.length, icon: 'apps-outline', desc: 'Display all transactions & receipts' },
-    { id: 'appointments', label: 'Appointments', count: appointments.length, icon: 'calendar-outline', desc: 'Filter confirmed clinic appointment slips' },
-    { id: 'permits', label: 'Sanitation Permits', count: permits.length, icon: 'document-text-outline', desc: 'Filter issued sanitation permits & QR certificates' },
-    { id: 'services', label: 'Wastewater Services', count: services.length, icon: 'water-outline', desc: 'Filter wastewater desludging receipts' },
-    { id: 'vaccines', label: 'Immunization Records', count: vaccines.length, icon: 'medkit-outline', desc: 'Filter family immunization records' },
-    { id: 'reports', label: 'Filed Reports', count: reports.length, icon: 'warning-outline', desc: 'Filter community health investigation cases' },
-  ];
-
-  const handleFilterSelect = (id: RecordFilter) => {
-    const currentIndex = filterOptions.findIndex((f) => f.id === activeFilter);
-    const nextIndex = filterOptions.findIndex((f) => f.id === id);
-
-    if (nextIndex !== currentIndex) {
-      setSlideDirection(nextIndex > currentIndex ? 'forward' : 'backward');
-      setActiveFilter(id);
+  const visibleTransactions = useMemo(() => {
+    if (activeFilter === 'All Results (15)') {
+      return TRANSACTIONS;
     }
 
-    const layout = chipLayouts.current[id];
-    if (layout && filterScrollViewRef.current) {
-      filterScrollViewRef.current.scrollTo({
-        x: Math.max(0, layout.x - 28),
-        animated: true,
-      });
-    }
-  };
-
-  const enteringAnim = slideDirection === 'forward'
-    ? FadeInRight.duration(280).springify()
-    : FadeInLeft.duration(280).springify();
-
-  const exitingAnim = slideDirection === 'forward'
-    ? FadeOutLeft.duration(220)
-    : FadeOutRight.duration(220);
-
-  const activeOptionObj = filterOptions.find((f) => f.id === activeFilter);
-  const hoveredOptionObj = filterOptions.find((f) => f.id === hoveredFilter);
+    const label = activeFilter.split(' (')[0];
+    return TRANSACTIONS.filter((transaction) => transaction.category === label.toUpperCase());
+  }, [activeFilter]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.badgeRow}>
-            <Ionicons name="folder-open-outline" size={14} color={colors.primary} />
-            <Text style={[styles.badgeText, { color: colors.primary }]}>RESULTS & OFFICIAL RECORDS</Text>
-          </View>
-          <Text style={[styles.title, { color: colors.text }]}>Transaction Results</Text>
-          <Text style={[styles.subtitle, { color: colors.subtext }]}>
-            Issued permits, confirmed clinic slips, service receipts & vaccine records
-          </Text>
-        </View>
+    <View style={[styles.container, isDarkMode && { backgroundColor: '#0B132B' }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={[styles.title, isDarkMode && { color: '#F8FAFC' }]}>Transaction Results</Text>
+        <Text style={[styles.subtitle, isDarkMode && { color: '#CBD5E1' }]}>Issued permits, confirmed clinic slips, service receipts & vaccine records</Text>
 
-        {/* Scrollable Sideways Filter Bar with Hover Support */}
-        <View style={styles.filterBarWrapper}>
-          <ScrollView
-            ref={filterScrollViewRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterBar}
-          >
-            {filterOptions.map((opt) => {
-              const isSelected = activeFilter === opt.id;
-              const isHovered = hoveredFilter === opt.id;
-
-              return (
-                <Pressable
-                  key={opt.id}
-                  onLayout={(e) => {
-                    chipLayouts.current[opt.id] = e.nativeEvent.layout;
-                  }}
-                  onHoverIn={() => setHoveredFilter(opt.id)}
-                  onHoverOut={() => setHoveredFilter(null)}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    {
-                      backgroundColor: isSelected
-                        ? colors.primary
-                        : isHovered
-                        ? colors.primary + '22'
-                        : colors.card,
-                      borderColor: isSelected || isHovered ? colors.primary : colors.border,
-                      transform: [{ scale: pressed ? 0.95 : isHovered ? 1.05 : 1 }],
-                      elevation: isHovered ? 4 : isSelected ? 2 : 1,
-                    },
-                  ]}
-                  onPress={() => handleFilterSelect(opt.id)}
-                >
-                  <Ionicons
-                    name={opt.icon as any}
-                    size={16}
-                    color={isSelected ? '#ffffff' : colors.primary}
-                  />
-                  <Text
-                    style={[
-                      styles.chipText,
-                      {
-                        color: isSelected ? '#ffffff' : isHovered ? colors.primary : colors.text,
-                        fontWeight: isSelected || isHovered ? '800' : '700',
-                      },
-                    ]}
-                  >
-                    {opt.label} ({opt.count})
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Animated Results Section */}
-        <Animated.View
-          key={activeFilter}
-          entering={enteringAnim}
-          exiting={exitingAnim}
-          layout={LinearTransition.springify()}
-          style={styles.recordsContainer}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
         >
-          {/* 1. APPOINTMENTS */}
-          {(activeFilter === 'all' || activeFilter === 'appointments') &&
-            appointments.map((a, idx) => (
-              <Animated.View key={`appt-${a.id}`} entering={FadeInDown.delay(idx * 60).springify()}>
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderLeft}>
-                      <View style={[styles.iconCircle, { backgroundColor: colors.primary + '18' }]}>
-                        <Ionicons name="calendar" size={20} color={colors.primary} />
-                      </View>
-                      <View>
-                        <Text style={[styles.cardCategory, { color: colors.primary }]}>APPOINTMENT SLIP</Text>
-                        <Text style={[styles.cardTitle, { color: colors.text }]}>{a.service}</Text>
-                      </View>
-                    </View>
-                    <StatusBadge status={a.statusType} label={a.status} />
-                  </View>
+          {FILTERS.map((filter) => {
+            const isActive = activeFilter === filter;
 
-                  <View style={[styles.metaGrid, { backgroundColor: colors.background }]}>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Appt ID:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]}>{a.id}</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Health Center:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]} numberOfLines={1}>{a.center}</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Schedule:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]}>{a.date} at {a.time}</Text>
-                    </View>
-                  </View>
+            return (
+              <TouchableOpacity
+                key={filter}
+                activeOpacity={0.85}
+                onPress={() => setActiveFilter(filter)}
+                style={[styles.filterPill, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }, isActive && styles.filterPillActive]}
+              >
+                <Text style={[styles.filterPillText, isDarkMode && { color: '#CBD5E1' }, isActive && styles.filterPillTextActive]}>
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { borderColor: colors.primary }]}
-                    onPress={() => setSelectedAppt(a)}
-                  >
-                    <Ionicons name="qr-code-outline" size={16} color={colors.primary} />
-                    <Text style={[styles.actionBtnText, { color: colors.primary }]}>View Appointment Pass</Text>
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
-            ))}
-
-          {/* 2. SANITATION PERMITS (WITH DEDICATED QR CONTAINER) */}
-          {(activeFilter === 'all' || activeFilter === 'permits') &&
-            permits.map((p, idx) => (
-              <Animated.View key={`permit-${p.id}`} entering={FadeInDown.delay(idx * 60).springify()}>
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderLeft}>
-                      <View style={[styles.iconCircle, { backgroundColor: '#05966918' }]}>
-                        <Ionicons name="document-text" size={20} color="#059669" />
-                      </View>
-                      <View>
-                        <Text style={[styles.cardCategory, { color: '#059669' }]}>SANITATION PERMIT</Text>
-                        <Text style={[styles.cardTitle, { color: colors.text }]}>{p.businessName}</Text>
-                      </View>
-                    </View>
-                    <StatusBadge status={p.statusType} label={p.status} />
-                  </View>
-
-                  {/* QR Code Container Box in Card */}
-                  <View style={[styles.qrContainerBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                    <View style={styles.qrIconContainer}>
-                      <Ionicons name="qr-code" size={44} color="#059669" />
-                    </View>
-                    <View style={styles.qrInfoCol}>
-                      <View style={styles.verifiedTagRow}>
-                        <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                        <Text style={styles.verifiedTagText}>OFFICIAL QR VERIFIED</Text>
-                      </View>
-                      <Text style={[styles.qrTokenText, { color: colors.text }]}>{p.id} • {p.businessType}</Text>
-                      <Text style={[styles.qrHintText, { color: colors.subtext }]}>Scan to verify permit status with city inspectors</Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.metaGrid, { backgroundColor: colors.background }]}>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Address:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]} numberOfLines={1}>{p.address}</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Fee Paid:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]}>{p.fee} ({p.paymentMethod})</Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { borderColor: '#059669' }]}
-                    onPress={() => setSelectedPermit(p)}
-                  >
-                    <Ionicons name="ribbon-outline" size={16} color="#059669" />
-                    <Text style={[styles.actionBtnText, { color: '#059669' }]}>View Permit & QR Certificate</Text>
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
-            ))}
-
-          {/* 3. WASTEWATER SERVICES */}
-          {(activeFilter === 'all' || activeFilter === 'services') &&
-            services.map((s, idx) => (
-              <Animated.View key={`service-${s.id}`} entering={FadeInDown.delay(idx * 60).springify()}>
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderLeft}>
-                      <View style={[styles.iconCircle, { backgroundColor: '#0284C718' }]}>
-                        <Ionicons name="water" size={20} color="#0284C7" />
-                      </View>
-                      <View>
-                        <Text style={[styles.cardCategory, { color: '#0284C7' }]}>WASTEWATER SERVICE RECEIPT</Text>
-                        <Text style={[styles.cardTitle, { color: colors.text }]}>{s.serviceType}</Text>
-                      </View>
-                    </View>
-                    <StatusBadge status={s.statusType} label={s.status} />
-                  </View>
-
-                  <View style={[styles.metaGrid, { backgroundColor: colors.background }]}>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Ticket ID:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]}>{s.id}</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Tank Capacity:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]}>{s.tankSize}</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Cost:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]}>{s.cost}</Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { borderColor: '#0284C7' }]}
-                    onPress={() => setSelectedService(s)}
-                  >
-                    <Ionicons name="receipt-outline" size={16} color="#0284C7" />
-                    <Text style={[styles.actionBtnText, { color: '#0284C7' }]}>View Service Receipt</Text>
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
-            ))}
-
-          {/* 4. IMMUNIZATION RECORDS */}
-          {(activeFilter === 'all' || activeFilter === 'vaccines') && (
-            <Animated.View entering={FadeInDown.springify()}>
-              <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardHeaderLeft}>
-                    <View style={[styles.iconCircle, { backgroundColor: '#8B5CF618' }]}>
-                      <Ionicons name="medkit" size={20} color="#8B5CF6" />
-                    </View>
-                    <View>
-                      <Text style={[styles.cardCategory, { color: '#8B5CF6' }]}>IMMUNIZATION RECORDS</Text>
-                      <Text style={[styles.cardTitle, { color: colors.text }]}>{userProfile.name} & Family</Text>
-                    </View>
-                  </View>
-                  <StatusBadge status="completed" label={`${vaccines.filter((v) => v.status === 'Completed').length} Recorded`} />
-                </View>
-
-                <View style={[styles.metaGrid, { backgroundColor: colors.background }]}>
-                  <View style={styles.metaRow}>
-                    <Text style={[styles.metaLabel, { color: colors.subtext }]}>Pedro (Self):</Text>
-                    <Text style={[styles.metaVal, { color: colors.text }]}>COVID-19, Flu, Tetanus</Text>
-                  </View>
-                  <View style={styles.metaRow}>
-                    <Text style={[styles.metaLabel, { color: colors.subtext }]}>Sofia (Daughter):</Text>
-                    <Text style={[styles.metaVal, { color: colors.text }]}>BCG, DPT 1st & 2nd</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.actionBtn, { borderColor: '#8B5CF6' }]}
-                  onPress={() => router.push('/(tabs)/view-vaccines' as any)}
+        {visibleTransactions.map((transaction) => (
+          <View key={transaction.id} style={[styles.card, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.headerLeft}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: `${transaction.color}22` },
+                  ]}
                 >
-                  <Ionicons name="open-outline" size={16} color="#8B5CF6" />
-                  <Text style={[styles.actionBtnText, { color: '#8B5CF6' }]}>Open Vaccine Certificates Portal</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* 5. FILED HEALTH REPORTS */}
-          {(activeFilter === 'all' || activeFilter === 'reports') &&
-            reports.map((r, idx) => (
-              <Animated.View key={`report-${r.id}`} entering={FadeInDown.delay(idx * 60).springify()}>
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderLeft}>
-                      <View style={[styles.iconCircle, { backgroundColor: '#EF444418' }]}>
-                        <Ionicons name="warning" size={20} color="#EF4444" />
-                      </View>
-                      <View>
-                        <Text style={[styles.cardCategory, { color: '#EF4444' }]}>FILED REPORT TRACKING</Text>
-                        <Text style={[styles.cardTitle, { color: colors.text }]}>{r.issueType}</Text>
-                      </View>
-                    </View>
-                    <StatusBadge status={r.statusType} label={r.status} />
-                  </View>
-
-                  <View style={[styles.metaGrid, { backgroundColor: colors.background }]}>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Case ID:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]}>{r.id}</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Urgency:</Text>
-                      <Text style={[styles.metaVal, { color: r.urgency === 'urgent' ? '#EF4444' : colors.text }]}>
-                        {r.urgency.toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={[styles.metaLabel, { color: colors.subtext }]}>Location:</Text>
-                      <Text style={[styles.metaVal, { color: colors.text }]} numberOfLines={1}>{r.location}</Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { borderColor: '#EF4444' }]}
-                    onPress={() => router.push('/(tabs)/track-requests' as any)}
-                  >
-                    <Ionicons name="search-outline" size={16} color="#EF4444" />
-                    <Text style={[styles.actionBtnText, { color: '#EF4444' }]}>Track Investigation Progress</Text>
-                  </TouchableOpacity>
+                  <Ionicons name={transaction.icon} size={22} color={transaction.color} />
                 </View>
-              </Animated.View>
-            ))}
-        </Animated.View>
 
-        <View style={{ height: 30 }} />
+                <View style={styles.titleWrap}>
+                  <Text style={[styles.categoryText, { color: transaction.color }]}>
+                    {transaction.category}
+                  </Text>
+                  <Text style={[styles.recordTitle, isDarkMode && { color: '#F8FAFC' }]}>{transaction.title}</Text>
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: `${transaction.statusColor}22` },
+                ]}
+              >
+                <Text style={[styles.statusText, { color: transaction.statusColor }]}>
+                  {transaction.status}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.qrBox, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B' }]}>
+              <View style={styles.qrLeft}>
+                <View style={styles.qrIconWrap}>
+                  <Ionicons name="qr-code-outline" size={22} color="#059669" />
+                </View>
+                <View style={styles.qrTextWrap}>
+                  <Text style={styles.qrLabel}>OFFICIAL QR VERIFIED</Text>
+                  <Text style={[styles.qrId, isDarkMode && { color: '#F8FAFC' }]}>{transaction.qrId}</Text>
+                  <Text style={[styles.qrDescription, isDarkMode && { color: '#CBD5E1' }]}>{transaction.description}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.detailsRow}>
+              <Text style={styles.detailLabel}>Address</Text>
+              <Text style={[styles.detailValue, isDarkMode && { color: '#F8FAFC' }]}>{transaction.address}</Text>
+            </View>
+
+            <View style={styles.detailsRow}>
+              <Text style={styles.detailLabel}>Fee Paid</Text>
+              <Text style={[styles.detailValue, isDarkMode && { color: '#F8FAFC' }]}>{transaction.fee}</Text>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.actionButton, { borderColor: transaction.color }]}
+              onPress={() => setSelectedTransaction(transaction)}
+            >
+              <Ionicons name="qr-code-outline" size={16} color={transaction.color} />
+              <Text style={[styles.actionButtonText, { color: transaction.color }]}>
+                {transaction.actionLabel}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ))}
       </ScrollView>
 
-      {/* ─── MODAL: Sanitation Permit Digital Certificate with Dedicated QR Container ─── */}
-      <Modal visible={!!selectedPermit} transparent animationType="slide" onRequestClose={() => setSelectedPermit(null)}>
+      {selectedTransaction ? (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Sanitation Permit Certificate</Text>
-              <TouchableOpacity onPress={() => setSelectedPermit(null)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+          <View style={[styles.modalCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalTitle, isDarkMode && { color: '#F8FAFC' }]}>{selectedTransaction.certificateTitle}</Text>
+              <TouchableOpacity onPress={() => setSelectedTransaction(null)}>
+                <Ionicons name="close" size={24} color="#374151" />
               </TouchableOpacity>
             </View>
 
-            {selectedPermit && (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={[styles.certBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <View style={styles.sealRow}>
-                    <Ionicons name="ribbon" size={44} color="#059669" />
-                    <Text style={styles.sealText}>CITY HEALTH OFFICE OFFICIAL PERMIT</Text>
-                  </View>
+            <View style={[styles.certificateCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B' }]}>
+              <View style={styles.topSection}>
+                <Ionicons name={selectedTransaction.icon} size={32} color={selectedTransaction.color} />
+                <Text style={[styles.certLabel, { color: selectedTransaction.color }]}>
+                  {selectedTransaction.certificateLabel}
+                </Text>
+                <Text style={[styles.certId, { color: selectedTransaction.color }]}>
+                  {selectedTransaction.id}
+                </Text>
+                <Text style={[styles.establishmentName, isDarkMode && { color: '#F8FAFC' }]}>{selectedTransaction.certificateSubject}</Text>
+                <Text style={[styles.establishmentType, isDarkMode && { color: '#CBD5E1' }]}>{selectedTransaction.certificateType}</Text>
+              </View>
 
-                  <Text style={styles.certPermitId}>{selectedPermit.id}</Text>
-                  <Text style={[styles.certBusinessName, { color: colors.text }]}>{selectedPermit.businessName}</Text>
-                  <Text style={[styles.certBusinessType, { color: colors.subtext }]}>{selectedPermit.businessType}</Text>
-
-                  {/* Dedicated Large QR Container Box */}
-                  <View style={[styles.modalQrBox, { backgroundColor: colors.card, borderColor: '#059669' }]}>
-                    <Ionicons name="qr-code" size={110} color="#059669" />
-                    <Text style={styles.qrVerificationHash}>VERIFIED • {selectedPermit.id} • CHOS-2026</Text>
-                    <Text style={[styles.qrModalHint, { color: colors.subtext }]}>
-                      Present this QR code to City Health Inspection officers for digital verification
-                    </Text>
-                  </View>
-
-                  <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                    <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Address:</Text>
-                    <Text style={[styles.certMetaVal, { color: colors.text }]}>{selectedPermit.address}</Text>
-                  </View>
-                  <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                    <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Permit Status:</Text>
-                    <Text style={[styles.certMetaVal, { color: '#059669', fontWeight: '800' }]}>
-                      {selectedPermit.status}
-                    </Text>
-                  </View>
-                  <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                    <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Fee Paid:</Text>
-                    <Text style={[styles.certMetaVal, { color: colors.text }]}>{selectedPermit.fee} ({selectedPermit.paymentMethod})</Text>
-                  </View>
-                  <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                    <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Issued Date:</Text>
-                    <Text style={[styles.certMetaVal, { color: colors.text }]}>{selectedPermit.date}</Text>
-                  </View>
+              <View style={[styles.qrCertificateBox, isDarkMode && { backgroundColor: '#1C2541' }]}>
+                <View style={styles.qrCertificateIconWrap}>
+                  <Ionicons name="qr-code-outline" size={48} color={selectedTransaction.color} />
                 </View>
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+                <Text style={[styles.qrCertificateText, { color: selectedTransaction.color }]}>
+                  VERIFIED - {selectedTransaction.qrId}
+                </Text>
+                <Text style={[styles.qrHint, isDarkMode && { color: '#CBD5E1' }]}>
+                  {selectedTransaction.certificateHint}
+                </Text>
+              </View>
 
-      {/* ─── MODAL: Appointment Pass ─── */}
-      <Modal visible={!!selectedAppt} transparent animationType="slide" onRequestClose={() => setSelectedAppt(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Clinic Appointment Pass</Text>
-              <TouchableOpacity onPress={() => setSelectedAppt(null)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {selectedAppt && (
-              <View style={[styles.certBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <Ionicons name="qr-code" size={90} color={colors.primary} style={{ alignSelf: 'center', marginBottom: 10 }} />
-                <Text style={[styles.certPermitId, { color: colors.primary }]}>{selectedAppt.id}</Text>
-                <Text style={[styles.certBusinessName, { color: colors.text }]}>{selectedAppt.service}</Text>
-
-                <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Clinic:</Text>
-                  <Text style={[styles.certMetaVal, { color: colors.text }]}>{selectedAppt.center}</Text>
+              <View style={styles.detailList}>
+                <View style={styles.detailListRow}>
+                  <Text style={styles.detailListLabel}>Address:</Text>
+                  <Text style={[styles.detailListValue, isDarkMode && { color: '#F8FAFC' }]}>{selectedTransaction.address}</Text>
                 </View>
-                <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Schedule:</Text>
-                  <Text style={[styles.certMetaVal, { color: colors.text }]}>{selectedAppt.date} at {selectedAppt.time}</Text>
+
+                <View style={styles.detailListRow}>
+                  <Text style={styles.detailListLabel}>{selectedTransaction.certificateStatusLabel}:</Text>
+                  <Text style={[styles.detailListStatus, { color: selectedTransaction.statusColor }]}>
+                    {selectedTransaction.status}
+                  </Text>
                 </View>
-                <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Doctor:</Text>
-                  <Text style={[styles.certMetaVal, { color: colors.text }]}>{selectedAppt.doctor}</Text>
+
+                <View style={styles.detailListRow}>
+                  <Text style={styles.detailListLabel}>Fee Paid:</Text>
+                  <Text style={[styles.detailListValue, isDarkMode && { color: '#F8FAFC' }]}>{selectedTransaction.fee}</Text>
+                </View>
+
+                <View style={styles.detailListRowLast}>
+                  <Text style={styles.detailListLabel}>{selectedTransaction.certificateDateLabel}:</Text>
+                  <Text style={[styles.detailListValue, isDarkMode && { color: '#F8FAFC' }]}>{selectedTransaction.certificateDate}</Text>
                 </View>
               </View>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* ─── MODAL: Wastewater Receipt ─── */}
-      <Modal visible={!!selectedService} transparent animationType="slide" onRequestClose={() => setSelectedService(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Wastewater Service Receipt</Text>
-              <TouchableOpacity onPress={() => setSelectedService(null)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
             </View>
-
-            {selectedService && (
-              <View style={[styles.certBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <Ionicons name="receipt-outline" size={48} color="#0284C7" style={{ alignSelf: 'center', marginBottom: 6 }} />
-                <Text style={[styles.certPermitId, { color: '#0284C7' }]}>{selectedService.id}</Text>
-                <Text style={[styles.certBusinessName, { color: colors.text }]}>{selectedService.serviceType}</Text>
-
-                <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Location:</Text>
-                  <Text style={[styles.certMetaVal, { color: colors.text }]}>{selectedService.address}</Text>
-                </View>
-                <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Tank Capacity:</Text>
-                  <Text style={[styles.certMetaVal, { color: colors.text }]}>{selectedService.tankSize}</Text>
-                </View>
-                <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Amount Paid:</Text>
-                  <Text style={[styles.certMetaVal, { fontWeight: '800', color: colors.text }]}>{selectedService.cost}</Text>
-                </View>
-                <View style={[styles.certMetaRow, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.certMetaLabel, { color: colors.subtext }]}>Status:</Text>
-                  <Text style={[styles.certMetaVal, { color: '#0284C7', fontWeight: '800' }]}>{selectedService.status}</Text>
-                </View>
-              </View>
-            )}
           </View>
         </View>
-      </Modal>
-    </SafeAreaView>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EEF5FF',
+    backgroundColor: '#F8F9FA',
   },
-  header: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#176B8718',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  badgeText: {
-    ...Typography.caption,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 110,
   },
   title: {
-    ...Typography.heading,
-    fontSize: 24,
-    color: '#0d4f64',
-    lineHeight: 30,
+    color: '#111827',
+    fontSize: 30,
+    fontWeight: '800',
+    marginBottom: 6,
   },
   subtitle: {
-    ...Typography.body,
+    color: '#6B7280',
     fontSize: 14,
-    lineHeight: 20,
-    marginTop: 4,
+    marginBottom: 18,
   },
-  filterBarWrapper: {
-    marginVertical: 10,
-  },
-  filterBar: {
-    paddingHorizontal: Spacing.md,
-    paddingRight: 32,
-    paddingVertical: 6,
+  filterRow: {
+    paddingBottom: 18,
     gap: 10,
   },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
+  filterPill: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 999,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1.5,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  chipText: {
-    ...Typography.caption,
+  filterPillActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D1D5DB',
+  },
+  filterPillText: {
+    color: '#374151',
+    fontSize: 12,
     fontWeight: '700',
-    fontSize: 13.5,
   },
-  recordsContainer: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.xs,
-    gap: 16,
+  filterPillTextActive: {
+    color: '#111827',
   },
   card: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 18,
-    shadowColor: '#176B87',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardHeader: {
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 14,
-    gap: 12,
+    marginBottom: 18,
   },
-  cardHeaderLeft: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     flex: 1,
+    paddingRight: 12,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  iconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  cardCategory: {
-    ...Typography.caption,
-    fontSize: 11.5,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 2,
-  },
-  cardTitle: {
-    ...Typography.subheading,
-    fontSize: 16.5,
-    fontWeight: '700',
-    lineHeight: 22,
-  },
-  qrContainerBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 14,
-  },
-  qrIconContainer: {
-    padding: 8,
-    backgroundColor: '#05966914',
-    borderRadius: 10,
-  },
-  qrInfoCol: {
+  titleWrap: {
     flex: 1,
   },
-  verifiedTagRow: {
+  categoryText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  recordTitle: {
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  qrBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  qrLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginBottom: 2,
   },
-  verifiedTagText: {
-    ...Typography.caption,
-    fontSize: 11.5,
-    fontWeight: '800',
+  qrIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#E8FFF2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  qrTextWrap: {
+    flex: 1,
+  },
+  qrLabel: {
     color: '#059669',
-    letterSpacing: 0.8,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginBottom: 4,
   },
-  qrTokenText: {
-    ...Typography.caption,
-    fontWeight: '700',
-    fontSize: 13.5,
-    lineHeight: 19,
-  },
-  qrHintText: {
-    ...Typography.small,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 2,
-  },
-  metaGrid: {
-    padding: 14,
-    borderRadius: 12,
-    gap: 10,
-    marginBottom: 14,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  metaLabel: {
-    ...Typography.caption,
+  qrId: {
+    color: '#111827',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '800',
+    marginBottom: 3,
+  },
+  qrDescription: {
+    color: '#6B7280',
+    fontSize: 12,
     lineHeight: 18,
   },
-  metaVal: {
-    ...Typography.caption,
-    fontWeight: '700',
-    fontSize: 14,
-    lineHeight: 20,
-    flex: 1,
-    textAlign: 'right',
+  detailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  actionBtn: {
+  detailLabel: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  detailValue: {
+    color: '#111827',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'right',
+    flex: 1,
+  },
+  actionButton: {
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: '#059669',
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    marginTop: 4,
   },
-  actionBtnText: {
-    ...Typography.caption,
+  actionButtonText: {
+    color: '#059669',
+    fontSize: 13,
     fontWeight: '700',
-    fontSize: 14,
   },
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(13, 79, 100, 0.55)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: BorderRadius.lg,
-    borderTopRightRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    maxHeight: '88%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    marginBottom: Spacing.md,
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 18,
   },
   modalTitle: {
-    ...Typography.heading,
-    fontSize: 18,
+    color: '#111827',
+    fontSize: 22,
+    fontWeight: '800',
+    flex: 1,
+    marginRight: 12,
   },
-  certBox: {
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
+  certificateCard: {
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 24,
   },
-  sealRow: {
+  topSection: {
     alignItems: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: 18,
   },
-  sealText: {
-    ...Typography.caption,
-    fontWeight: '800',
+  certLabel: {
+    color: '#059669',
     fontSize: 11,
-    color: '#059669',
-    letterSpacing: 0.5,
-    marginTop: 2,
-  },
-  certPermitId: {
-    ...Typography.subheading,
-    textAlign: 'center',
     fontWeight: '800',
-    fontSize: 20,
+    letterSpacing: 0.7,
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  certId: {
     color: '#059669',
-    marginBottom: 4,
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 8,
   },
-  certBusinessName: {
-    ...Typography.subheading,
+  establishmentName: {
+    color: '#111827',
+    fontSize: 22,
+    fontWeight: '800',
     textAlign: 'center',
-    fontWeight: '700',
-    fontSize: 16,
-    marginBottom: 2,
   },
-  certBusinessType: {
-    ...Typography.caption,
+  establishmentType: {
+    color: '#6B7280',
+    fontSize: 13,
+    marginTop: 4,
     textAlign: 'center',
-    marginBottom: Spacing.md,
   },
-  modalQrBox: {
+  qrCertificateBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
+    padding: 20,
     alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1.5,
-    marginVertical: Spacing.md,
+    marginBottom: 18,
   },
-  qrVerificationHash: {
-    ...Typography.caption,
-    fontWeight: '800',
+  qrCertificateIconWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  qrCertificateText: {
     color: '#059669',
     fontSize: 12,
-    marginTop: 8,
+    fontWeight: '800',
     letterSpacing: 0.5,
-  },
-  qrModalHint: {
-    ...Typography.small,
     textAlign: 'center',
-    fontSize: 11,
-    marginTop: 4,
+    marginBottom: 8,
   },
-  certMetaRow: {
+  qrHint: {
+    color: '#6B7280',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  detailList: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    marginTop: 8,
+  },
+  detailListRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    alignItems: 'center',
+    paddingVertical: 12,
     borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    gap: 16,
   },
-  certMetaLabel: {
-    ...Typography.caption,
+  detailListRowLast: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    gap: 16,
   },
-  certMetaVal: {
-    ...Typography.caption,
+  detailListLabel: {
+    color: '#6B7280',
+    fontSize: 12,
     fontWeight: '600',
+    flex: 1,
+  },
+  detailListValue: {
+    color: '#111827',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'right',
+    flex: 1,
+  },
+  detailListStatus: {
+    color: '#D97706',
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'right',
+    flex: 1,
   },
 });

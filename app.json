@@ -1,23 +1,17 @@
 {
   "expo": {
-    "name": "CitizenApp",
-    "slug": "CitizenApp",
-    "version": "17.0.0",
+    "name": "civentral-apps",
+    "slug": "civentral-apps",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "citizenapp",
+    "scheme": "civentralapps",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.citizenapp.healthsanitation",
-      "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "This app needs access to your gallery to attach photos to health reports.",
-        "NSLocationWhenInUseUsageDescription": "Your location is used to pinpoint the incident address."
-      }
+      "supportsTablet": true
     },
     "android": {
-      "package": "com.citizenapp.healthsanitation",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -25,12 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
-      ]
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
@@ -39,17 +28,25 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Civentral to use your location to show nearby public-health risks."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#0F172A"
           }
         }
-      ]
+      ],
+      "expo-video",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

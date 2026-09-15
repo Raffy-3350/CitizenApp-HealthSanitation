@@ -1,77 +1,40 @@
-
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { OfflineBanner } from '../components/ui/OfflineBanner';
-import { AppProvider } from '../context/AppContext';
-import { useColors, useResolvedColorScheme } from '../hooks/useColors';
+import 'react-native-reanimated';
 
-function RootLayoutNav() {
-  const colors = useColors();
-  const scheme = useResolvedColorScheme();
+import { LanguageProvider } from '@/src/context/LanguageContext';
+import { SessionTimeoutProvider } from '@/src/context/SessionTimeoutContext';
+import { ThemeProvider as AppThemeProvider } from '@/src/context/ThemeContext';
+import { useColorScheme } from '@/src/hooks/use-color-scheme';
 
-  return (
-    <View style={styles.webWrapper}>
-      <View style={[styles.mobileContainer, { backgroundColor: colors.background }]}>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <OfflineBanner />
-        <Stack
-          screenOptions={{
-            animation: 'slide_from_right',
-            animationDuration: 300,
-            headerStyle: {
-              backgroundColor: colors.background,
-            },
-            headerTitleStyle: {
-              fontWeight: '600',
-              color: colors.text,
-            },
-            headerTintColor: colors.primary,
-            headerShadowVisible: false,
-            contentStyle: {
-              backgroundColor: colors.background,
-            },
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="modal"
-            options={{
-              presentation: 'modal',
-              headerShown: false,
-            }}
-          />
-        </Stack>
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  webWrapper: {
-    flex: 1,
-    backgroundColor: '#092532',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mobileContainer: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 480,
-    alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-});
+export const unstable_settings = {
+  initialRouteName: '(auth)',
+};
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
   return (
-    <AppProvider>
-      <RootLayoutNav />
-    </AppProvider>
+    <LanguageProvider>
+      <AppThemeProvider>
+        <SessionTimeoutProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="education" />
+            <Stack.Screen name="health" />
+            <Stack.Screen name="business" />
+            <Stack.Screen name="housing" />
+            <Stack.Screen name="emergency" />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </SessionTimeoutProvider>
+    </AppThemeProvider>
+  </LanguageProvider>
   );
 }
