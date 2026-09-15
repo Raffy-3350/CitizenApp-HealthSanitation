@@ -16,6 +16,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { AuthService } from '@/src/services/auth-service';
+import { validateTextInput } from '@/src/utils/input-security';
 import { styles } from '../styles/LoginScreen.styles';
 
 export function LoginScreen() {
@@ -33,6 +34,21 @@ export function LoginScreen() {
 
   const handleSignIn = async () => {
     setErrorMessage(null);
+
+    // 1. Client-Side Input Security Inspection (SQL Injection & XSS Detection)
+    const emailCheck = validateTextInput(email.trim(), 'Email Address / Phone Number');
+    if (!emailCheck.isSafe) {
+      setErrorMessage(emailCheck.errorMessage || 'Invalid input detected.');
+      Alert.alert(emailCheck.errorTitle || 'Security Warning', emailCheck.errorMessage);
+      return;
+    }
+
+    const passwordCheck = validateTextInput(password.trim(), 'Password');
+    if (!passwordCheck.isSafe) {
+      setErrorMessage(passwordCheck.errorMessage || 'Invalid password format.');
+      Alert.alert(passwordCheck.errorTitle || 'Security Warning', passwordCheck.errorMessage);
+      return;
+    }
 
     if (!password.trim()) {
       setErrorMessage('Please enter your password.');

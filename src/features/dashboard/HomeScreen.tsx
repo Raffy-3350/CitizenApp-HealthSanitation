@@ -19,6 +19,7 @@ import { BlurView } from "expo-blur";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   ImageBackground,
   KeyboardAvoidingView,
   Modal,
@@ -31,6 +32,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
+import { requestFileAccessPermission, validateFileSecurity } from "@/src/utils/file-security";
 import { styles } from "./styles/HomeScreen.styles";
 
 import { HomeScreenSkeleton } from "./HomeScreenSkeleton";
@@ -440,13 +443,56 @@ export function ApplySanitationPermitModal({
   const [businessCategory, setBusinessCategory] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [uploadedRequirements, setUploadedRequirements] = useState<Record<string, boolean>>({});
+  const [uploadedRequirements, setUploadedRequirements] = useState<
+    Record<string, { name: string; uri: string; size?: number } | null>
+  >({});
 
-  const toggleUpload = (title: string) => {
-    setUploadedRequirements((current) => ({
-      ...current,
-      [title]: !current[title],
-    }));
+  const handlePickRequirement = async (title: string) => {
+    // 1. Storage Access Permission Pop-up
+    const hasPermission = await requestFileAccessPermission(title);
+    if (!hasPermission) return;
+
+    try {
+      // 2. Open System Document Picker
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/jpeg', 'image/png'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const asset = res.assets[0];
+
+        // 3. Perform Security, Malware, Size & Extension Validation
+        const securityResult = validateFileSecurity({
+          name: asset.name,
+          size: asset.size,
+          mimeType: asset.mimeType,
+          maxSizeBytes: 10 * 1024 * 1024,
+          isVideo: false,
+        });
+
+        if (!securityResult.isValid) {
+          Alert.alert(
+            securityResult.errorTitle || 'File Security Alert',
+            securityResult.errorMessage || 'The selected file failed security validation.'
+          );
+          return;
+        }
+
+        // 4. Save securely picked file state
+        setUploadedRequirements((prev) => ({
+          ...prev,
+          [title]: {
+            name: securityResult.sanitizedName || asset.name,
+            uri: asset.uri,
+            size: asset.size,
+          },
+        }));
+      }
+    } catch (err) {
+      console.error('[ApplySanitationPermitModal] Picker error:', err);
+      Alert.alert('Error', 'Unable to pick file. Please try again.');
+    }
   };
 
   const handleSubmit = () => {
@@ -530,21 +576,24 @@ export function ApplySanitationPermitModal({
 
               <Text style={[permitStyles.sectionHeader, isDarkMode && { color: "#F8FAFC" }]}>Upload Requirements</Text>
               {SANITATION_REQUIREMENTS.map((requirement) => {
-                const isUploaded = Boolean(uploadedRequirements[requirement.title]);
+                const pickedFile = uploadedRequirements[requirement.title];
+                const isUploaded = Boolean(pickedFile);
                 return (
                   <View key={requirement.title} style={permitStyles.requirementRow}>
-                    <Ionicons name="document-text-outline" size={24} color="#0EA5E9" />
+                    <Ionicons name={isUploaded ? "document-attach-outline" : "document-text-outline"} size={24} color={isUploaded ? "#10B981" : "#0EA5E9"} />
                     <View style={permitStyles.requirementInfo}>
                       <Text style={[permitStyles.requirementTitle, isDarkMode && { color: "#F8FAFC" }]}>{requirement.title}</Text>
-                      <Text style={[permitStyles.requirementSubtitle, isDarkMode && { color: "#94A3B8" }]}>{requirement.subtitle}</Text>
+                      <Text style={[permitStyles.requirementSubtitle, isDarkMode && { color: isUploaded ? "#10B981" : "#94A3B8" }]} numberOfLines={1}>
+                        {isUploaded ? `📄 ${pickedFile?.name}` : requirement.subtitle}
+                      </Text>
                     </View>
                     <TouchableOpacity
                       style={[permitStyles.uploadButton, isUploaded && permitStyles.uploadedButton]}
-                      onPress={() => toggleUpload(requirement.title)}
+                      onPress={() => handlePickRequirement(requirement.title)}
                       activeOpacity={0.8}
                     >
                       <Text style={permitStyles.uploadButtonText}>{isUploaded ? "Added" : "Upload"}</Text>
-                      <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+                      <Ionicons name={isUploaded ? "checkmark" : "chevron-forward"} size={14} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 );

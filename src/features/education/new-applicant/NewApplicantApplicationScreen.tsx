@@ -8,6 +8,7 @@ import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { requestFileAccessPermission, validateFileSecurity } from '@/src/utils/file-security';
 import { getScholarshipProgramDetails, ScholarshipProgram, ScholarshipRequiredDocument, submitNewScholarshipApplication, SubmitApplicationResult } from './api/ScholarshipProgramApi';
 import { styles } from './styles/NewApplicantApplication.styles';
 
@@ -95,6 +96,9 @@ export function NewApplicantApplicationScreen() {
     const name = (doc.document_name || '').toUpperCase();
     const isVideo = code.includes('VIDEO') || name.includes('VIDEO');
 
+    const hasPermission = await requestFileAccessPermission(doc.document_name || 'requirement document');
+    if (!hasPermission) return;
+
     const allowedTypes = isVideo
       ? ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/*']
       : ['application/pdf', 'image/jpeg', 'image/png'];
@@ -126,16 +130,27 @@ export function NewApplicantApplicationScreen() {
           uriScheme: asset.uri ? asset.uri.split(':')[0] : null,
         });
 
-        // 10MB/20MB file size limit validation
-        if (asset.size && asset.size > maxSizeBytes) {
-          Alert.alert('File Too Large', `The selected ${doc.document_name} file exceeds the maximum limit of ${maxLimitMb}MB.`);
+        // Comprehensive Client-Side Security & Malware Pre-Validation
+        const securityResult = validateFileSecurity({
+          name: asset.name,
+          size: asset.size,
+          mimeType: asset.mimeType,
+          maxSizeBytes,
+          isVideo,
+        });
+
+        if (!securityResult.isValid) {
+          Alert.alert(
+            securityResult.errorTitle || 'File Security Alert',
+            securityResult.errorMessage || 'The selected file failed security validation.'
+          );
           return;
         }
 
         setFiles((prev) => ({
           ...prev,
           [docKey]: {
-            name: asset.name,
+            name: securityResult.sanitizedName || asset.name,
             size: asset.size,
             uri: asset.uri,
             mimeType: asset.mimeType,

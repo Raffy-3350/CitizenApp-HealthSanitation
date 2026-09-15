@@ -7,6 +7,8 @@ import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { requestFileAccessPermission, validateFileSecurity } from '@/src/utils/file-security';
+import { validateTextInput } from '@/src/utils/input-security';
 import { CitizenComplianceDetailsData, fetchCitizenRenewalCompliance, submitCitizenComplianceResponse } from './api/renewalApi';
 import { SelectedFileState } from './RenewalApplicationScreen';
 import { styles } from './styles/RenewalCompliance.styles';
@@ -60,6 +62,9 @@ export function RenewalComplianceScreen() {
   }, [loadData]);
 
   const handlePickDocument = async (docType: 'cor' | 'cog' | 'soa') => {
+    const hasPermission = await requestFileAccessPermission(docType.toUpperCase() + ' document');
+    if (!hasPermission) return;
+
     try {
       const res = await DocumentPicker.getDocumentAsync({
         type: ['application/pdf', 'image/jpeg', 'image/png'],
@@ -69,15 +74,27 @@ export function RenewalComplianceScreen() {
       if (!res.canceled && res.assets && res.assets.length > 0) {
         const asset = res.assets[0];
 
-        if (asset.size && asset.size > 10 * 1024 * 1024) {
-          Alert.alert('File Too Large', `The selected ${docType.toUpperCase()} file exceeds the maximum limit of 10MB.`);
+        // Comprehensive Client-Side Security & Malware Pre-Validation
+        const securityResult = validateFileSecurity({
+          name: asset.name,
+          size: asset.size,
+          mimeType: asset.mimeType,
+          maxSizeBytes: 10 * 1024 * 1024,
+          isVideo: false,
+        });
+
+        if (!securityResult.isValid) {
+          Alert.alert(
+            securityResult.errorTitle || 'File Security Alert',
+            securityResult.errorMessage || 'The selected replacement file failed security validation.'
+          );
           return;
         }
 
         setFiles((prev) => ({
           ...prev,
           [docType]: {
-            name: asset.name,
+            name: securityResult.sanitizedName || asset.name,
             size: asset.size,
             uri: asset.uri,
             mimeType: asset.mimeType,
@@ -126,6 +143,15 @@ export function RenewalComplianceScreen() {
       Alert.alert('Incomplete Response', 'Please complete all requested replacement documents and response text before submitting.');
       return;
     }
+
+    if (clarificationText.trim()) {
+      const securityCheck = validateTextInput(clarificationText.trim(), 'Clarification Response');
+      if (!securityCheck.isSafe) {
+        Alert.alert(securityCheck.errorTitle || 'Security Risk Blocked', securityCheck.errorMessage);
+        return;
+      }
+    }
+
     setSubmitError(null);
     setShowConfirmModal(true);
   };

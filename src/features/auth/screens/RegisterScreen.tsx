@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { AuthService } from '@/src/services/auth-service';
+import { validateTextInput } from '@/src/utils/input-security';
 import { styles } from '../styles/RegisterScreen.styles';
 
 export function RegisterScreen() {
@@ -73,6 +74,26 @@ export function RegisterScreen() {
     const cleanFirstName = firstName.trim();
     const cleanLastName = lastName.trim();
     const cleanMiddleName = middleName.trim();
+
+    // Client-Side Input Security Inspection (SQL Injection & XSS Detection)
+    const inputsToCheck = [
+      { val: cleanEmail, name: 'Email Address' },
+      { val: cleanPhone, name: 'Mobile Number' },
+      { val: cleanFirstName, name: 'First Name' },
+      { val: cleanMiddleName, name: 'Middle Name' },
+      { val: cleanLastName, name: 'Last Name' },
+      { val: password, name: 'Password' },
+    ];
+
+    for (const item of inputsToCheck) {
+      if (item.val) {
+        const check = validateTextInput(item.val, item.name);
+        if (!check.isSafe) {
+          setErrorMessage(check.errorMessage || `Security threat detected in ${item.name}.`);
+          return;
+        }
+      }
+    }
 
     // 1. Email Address Validation
     const isEmailMode = params.mode === 'email' || (!!cleanEmail && cleanEmail.includes('@')) || !!params.email || params.identifier?.includes('@');
