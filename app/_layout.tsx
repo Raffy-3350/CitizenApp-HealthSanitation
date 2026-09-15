@@ -19,22 +19,22 @@ export default function RootLayout() {
     <LanguageProvider>
       <AppThemeProvider>
         <SessionTimeoutProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="education" />
-            <Stack.Screen name="health" />
-            <Stack.Screen name="business" />
-            <Stack.Screen name="housing" />
-            <Stack.Screen name="emergency" />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </SessionTimeoutProvider>
-    </AppThemeProvider>
-  </LanguageProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="education" />
+              <Stack.Screen name="health" />
+              <Stack.Screen name="business" />
+              <Stack.Screen name="housing" />
+              <Stack.Screen name="emergency" />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            </Stack>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </SessionTimeoutProvider>
+      </AppThemeProvider>
+    </LanguageProvider>
   );
 }

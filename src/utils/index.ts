@@ -1,1 +1,0 @@
-// Global utility helper functions

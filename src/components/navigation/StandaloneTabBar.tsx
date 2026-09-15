@@ -1,5 +1,6 @@
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { useTheme } from '@/src/context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -14,7 +15,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 const TAB_ITEMS = [
   { route: '/(tabs)/', icon: 'house.fill', label: 'Home' },
   { route: '/(tabs)/services', icon: 'square.grid.2x2.fill', label: 'Services' },
-  { route: '/(tabs)/sos', icon: 'shield.fill', label: 'SOS', isSOS: true },
+  { route: '/(tabs)/records', icon: 'folder-open-outline', label: 'Records', isCenter: true },
   { route: '/(tabs)/tracker', icon: 'map', label: 'Maps' },
   { route: '/(tabs)/profile', icon: 'person.crop.circle.fill', label: 'Profile' },
 ] as const;
@@ -34,19 +35,20 @@ export function StandaloneTabBar() {
         isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
       ]}>
       {TAB_ITEMS.map((item) => {
-        const isSOS = 'isSOS' in item && item.isSOS;
+        const isCenter = 'isCenter' in item && item.isCenter;
 
-        if (isSOS) {
+        if (isCenter) {
           return (
             <TouchableOpacity
               key={item.route}
               accessibilityRole="button"
               onPress={() => router.push(item.route as any)}
               activeOpacity={0.85}
-              style={styles.sosButtonContainer}>
-              <View style={[styles.sosCircle, isDarkMode && { borderColor: '#1C2541' }]}>
-                <IconSymbol name={item.icon as any} size={30} color="#FFFFFF" />
+              style={styles.centerButtonContainer}>
+              <View style={[styles.centerCircle, isDarkMode && { borderColor: '#1C2541' }]}>
+                <Ionicons name="folder-open-outline" size={28} color="#FFFFFF" />
               </View>
+              <Text style={[styles.centerLabel, isDarkMode && { color: '#E2E8F0' }]}>Records</Text>
             </TouchableOpacity>
           );
         }
@@ -106,27 +108,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 3,
   },
-  sosButtonContainer: {
+  centerButtonContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 64,
+    width: 72,
+    marginTop: -22,
+    paddingBottom: 4,
   },
-  sosCircle: {
-    position: 'absolute',
-    top: -34,
+  centerCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#DC2626',
+    backgroundColor: '#4ADE80',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3.5,
     borderColor: '#FFFFFF',
-    shadowColor: '#DC2626',
+    shadowColor: '#4ADE80',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.45,
     shadowRadius: 10,
     elevation: 12,
+  },
+  centerLabel: {
+    marginTop: 6,
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1F2937',
   },
 });
 

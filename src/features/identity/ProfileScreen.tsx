@@ -3684,6 +3684,66 @@ export function ProfileScreen() {
                 ))}
               </View>
 
+              {/* ── Section 6: Cookies & Local Storage Policy ── */}
+              <View
+                style={[
+                  privacyStyles.sectionCard,
+                  isDarkMode && { backgroundColor: "#0F172A", borderColor: "#3A506B" },
+                ]}
+              >
+                <View style={privacyStyles.sectionHeader}>
+                  <View style={privacyStyles.sectionNumberBadge}>
+                    <Text style={privacyStyles.sectionNumber}>6</Text>
+                  </View>
+                  <Text style={[privacyStyles.sectionTitle, isDarkMode && { color: "#F8FAFC" }]}>
+                    {labels.sec6Title}
+                  </Text>
+                </View>
+                <Text style={[privacyStyles.sectionSummary, isDarkMode && { color: "#CBD5E1" }]}>
+                  {labels.sec6Summary}
+                </Text>
+                {[
+                  labels.sec6Bullet1,
+                  labels.sec6Bullet2,
+                  labels.sec6Bullet3,
+                ].map((item, i) => (
+                  <View key={i} style={privacyStyles.bulletRow}>
+                    <Text style={[privacyStyles.bullet, isDarkMode && { color: "#94A3B8" }]}>•</Text>
+                    <Text style={[privacyStyles.bulletText, isDarkMode && { color: "#94A3B8" }]}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* ── Section 7: Third-Party Service Providers & Notices ── */}
+              <View
+                style={[
+                  privacyStyles.sectionCard,
+                  isDarkMode && { backgroundColor: "#0F172A", borderColor: "#3A506B" },
+                ]}
+              >
+                <View style={privacyStyles.sectionHeader}>
+                  <View style={privacyStyles.sectionNumberBadge}>
+                    <Text style={privacyStyles.sectionNumber}>7</Text>
+                  </View>
+                  <Text style={[privacyStyles.sectionTitle, isDarkMode && { color: "#F8FAFC" }]}>
+                    {labels.sec7Title}
+                  </Text>
+                </View>
+                <Text style={[privacyStyles.sectionSummary, isDarkMode && { color: "#CBD5E1" }]}>
+                  {labels.sec7Summary}
+                </Text>
+                {[
+                  labels.sec7Bullet1,
+                  labels.sec7Bullet2,
+                  labels.sec7Bullet3,
+                ].map((item, i) => (
+                  <View key={i} style={privacyStyles.bulletRow}>
+                    <Text style={[privacyStyles.bullet, isDarkMode && { color: "#94A3B8" }]}>•</Text>
+                    <Text style={[privacyStyles.bulletText, isDarkMode && { color: "#94A3B8" }]}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+
               {/* ── Employee Acknowledgment Card (shown after scrolling) ── */}
               {hasScrolledToEnd && (
                 <View style={privacyStyles.acknowledgmentCard}>

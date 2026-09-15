@@ -1,7 +1,7 @@
 export type MainTabParamList = {
   index: undefined;
   services: undefined;
-  sos: undefined;
+  records: undefined;
   notifications: undefined;
   profile: undefined;
 };
